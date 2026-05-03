@@ -899,6 +899,26 @@ ul, ol { list-style: none; }
 
 .q-label { font-size: 1rem; font-weight: 800; letter-spacing: -0.5px; }
 .q-sub { font-size: 0.7rem; color: var(--text3); font-weight: 500; }
+.q-size {
+    font-size: 0.65rem;
+    color: var(--accent);
+    font-weight: 600;
+    min-height: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.01em;
+}
+.q-size-spinner {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border: 1.5px solid var(--text3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+}
+.quality-btn.mp3-btn .q-size { color: var(--success); }
 
 /* Download Action */
 .download-action {
