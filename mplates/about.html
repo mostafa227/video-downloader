@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}About VidFetch - Free Video Downloader{% endblock %}
+
+{% block content %}
+<section class="about-hero">
+    <div class="about-hero-bg">
+        <div class="hero-orb orb-1"></div>
+        <div class="hero-orb orb-2"></div>
+    </div>
+    <div class="container">
+        <div class="about-header">
+            <p class="section-label">About Us</p>
+            <h1 class="hero-title">Download Smarter,<br><span class="gradient-text">Not Harder</span></h1>
+            <p class="hero-subtitle">VidFetch is a free, open-source video downloader powered by yt-dlp — supporting over 1,000 platforms worldwide.</p>
+        </div>
+    </div>
+</section>
+
+<section class="about-content">
+    <div class="container">
+        <div class="about-grid">
+            <div class="about-main">
+                <div class="about-card">
+                    <div class="about-card-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <h2>Our Mission</h2>
+                    <p>VidFetch was built with a simple mission: to give everyone free, fast, and easy access to download videos from the internet for personal use. We believe that saving a video for offline viewing — a workout tutorial, a cooking recipe, a travel vlog — should not require technical knowledge or paid subscriptions.</p>
+                    <p>We are powered entirely by <strong>yt-dlp</strong>, the world's most capable open-source video downloader, which supports over 1,000 websites and streaming platforms.</p>
+                </div>
+
+                <div class="about-card">
+                    <div class="about-card-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                    </div>
+                    <h2>Privacy &amp; Safety</h2>
+                    <p>We do not store your download history, track your video URLs, or collect any personal information. Every download session is completely anonymous. No account is required and no cookies are stored beyond your theme preference.</p>
+                    <p>Your privacy is important to us. We never sell data, run ads, or use third-party analytics that track you across the web.</p>
+                </div>
+
+                <div class="about-card">
+                    <div class="about-card-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 0 0 1.946-.806 3.42 3.42 0 0 1 4.438 0 3.42 3.42 0 0 0 1.946.806 3.42 3.42 0 0 1 3.138 3.138 3.42 3.42 0 0 0 .806 1.946 3.42 3.42 0 0 1 0 4.438 3.42 3.42 0 0 0-.806 1.946 3.42 3.42 0 0 1-3.138 3.138 3.42 3.42 0 0 0-1.946.806 3.42 3.42 0 0 1-4.438 0 3.42 3.42 0 0 0-1.946-.806 3.42 3.42 0 0 1-3.138-3.138 3.42 3.42 0 0 0-.806-1.946 3.42 3.42 0 0 1 0-4.438 3.42 3.42 0 0 0 .806-1.946 3.42 3.42 0 0 1 3.138-3.138z"/>
+                        </svg>
+                    </div>
+                    <h2>Legal &amp; Fair Use</h2>
+                    <p>VidFetch is a tool designed for personal, offline, non-commercial use only. Always ensure you have the right to download a video before doing so. Downloading copyrighted content without permission from the copyright holder may violate their terms of service and applicable laws.</p>
+                    <p>Please respect creators, support their work, and only download content you own or have explicit permission to download.</p>
+                </div>
+            </div>
+
+            <div class="about-sidebar">
+                <div class="sidebar-card">
+                    <h3>Supported Platforms</h3>
+                    <p class="sidebar-desc">VidFetch supports 1,000+ websites. Here are the most popular ones:</p>
+                    <ul class="platforms-list">
+                        <li>
+                            <span class="platform-dot yt"></span>YouTube
+                        </li>
+                        <li>
+                            <span class="platform-dot tt"></span>TikTok
+                        </li>
+                        <li>
+                            <span class="platform-dot ig"></span>Instagram
+                        </li>
+                        <li>
+                            <span class="platform-dot fb"></span>Facebook
+                        </li>
+                        <li>
+                            <span class="platform-dot tw"></span>Twitter / X
+                        </li>
+                        <li>
+                            <span class="platform-dot vimeo"></span>Vimeo
+                        </li>
+                        <li>
+                            <span class="platform-dot dailymotion"></span>Dailymotion
+                        </li>
+                        <li>
+                            <span class="platform-dot reddit"></span>Reddit
+                        </li>
+                        <li>
+                            <span class="platform-dot twitch"></span>Twitch
+                        </li>
+                        <li>
+                            <span class="platform-dot soundcloud"></span>SoundCloud
+                        </li>
+                        <li>
+                            <span class="platform-dot more"></span>1,000+ more...
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-card tech-card">
+                    <h3>Tech Stack</h3>
+                    <div class="tech-item">
+                        <span class="tech-badge">Python</span>
+                        <span>Backend runtime</span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-badge">Flask</span>
+                        <span>Web framework</span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-badge">yt-dlp</span>
+                        <span>Video extraction</span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-badge">ffmpeg</span>
+                        <span>Media processing</span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-badge">HTML/CSS</span>
+                        <span>Frontend</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-card stats-card">
+                    <h3>By the Numbers</h3>
+                    <div class="stat-row">
+                        <div class="stat-num">1000+</div>
+                        <div class="stat-lbl">Supported Sites</div>
+                    </div>
+                    <div class="stat-row">
+                        <div class="stat-num">4K</div>
+                        <div class="stat-lbl">Max Resolution</div>
+                    </div>
+                    <div class="stat-row">
+                        <div class="stat-num">Free</div>
+                        <div class="stat-lbl">Always &amp; Forever</div>
+                    </div>
+                    <div class="stat-row">
+                        <div class="stat-num">0</div>
+                        <div class="stat-lbl">Ads or Trackers</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cta-section" style="margin-top: 0;">
+            <div class="container">
+                <div class="cta-card">
+                    <div class="cta-orb"></div>
+                    <h2>Ready to Download?</h2>
+                    <p>Head to the home page and start downloading for free.</p>
+                    <a href="/" class="btn-primary">
+                        Go to Home
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
