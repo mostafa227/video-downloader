@@ -181,7 +181,7 @@ async function fetchVideoInfo(url) {
     document.getElementById('videoCard').classList.add('hidden');
 
     try {
-        const resp = await fetch('/api/video-info', {
+        const resp = await fetch('/vid/info', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
@@ -322,7 +322,7 @@ document.getElementById('downloadBtn').addEventListener('click', async () => {
         }
     }, 400);
 
-    const downloadUrl = `/api/download?url=${encodeURIComponent(VIDEO_URL)}&quality=${selectedQuality}&format=${selectedFormat}`;
+    const downloadUrl = `/vid/download?url=${encodeURIComponent(VIDEO_URL)}&quality=${selectedQuality}&format=${selectedFormat}`;
 
     try {
         // Use an anchor to trigger download
