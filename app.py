@@ -125,7 +125,7 @@ def about():
     return render_template("about.html")
 
 
-@app.route("/api/video-info", methods=["POST"])
+@app.route("/vid/info", methods=["POST"])
 def video_info():
     data = request.get_json()
     url = (data or {}).get("url", "").strip()
@@ -186,7 +186,7 @@ def video_info():
         return jsonify({"error": clean_error(str(e))}), 400
 
 
-@app.route("/api/download")
+@app.route("/vid/download")
 def download_video():
     url = request.args.get("url", "").strip()
     quality = request.args.get("quality", "720")
