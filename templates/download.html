@@ -98,14 +98,17 @@
                         <button class="quality-btn active" data-quality="360" data-format="video">
                             <span class="q-label">360p</span>
                             <span class="q-sub">SD</span>
+                            <span class="q-size"><span class="q-size-spinner"></span></span>
                         </button>
                         <button class="quality-btn" data-quality="720" data-format="video">
                             <span class="q-label">720p</span>
                             <span class="q-sub">HD</span>
+                            <span class="q-size"><span class="q-size-spinner"></span></span>
                         </button>
                         <button class="quality-btn popular" data-quality="1080" data-format="video">
                             <span class="q-label">1080p</span>
                             <span class="q-sub">Full HD</span>
+                            <span class="q-size"><span class="q-size-spinner"></span></span>
                         </button>
                     </div>
                 </div>
@@ -116,6 +119,7 @@
                         <button class="quality-btn mp3-btn" data-quality="best" data-format="mp3">
                             <span class="q-label">MP3</span>
                             <span class="q-sub">192kbps</span>
+                            <span class="q-size"><span class="q-size-spinner"></span></span>
                         </button>
                     </div>
                 </div>
@@ -240,20 +244,33 @@ function displayVideoInfo(data) {
     qualityBtns.innerHTML = '';
     const qualities = data.qualities && data.qualities.length ? data.qualities : ['360', '720'];
     const labels = { '360': 'SD', '720': 'HD', '1080': 'Full HD', '2160': '4K' };
+    const sizes = data.file_sizes || {};
+
     qualities.forEach((q, i) => {
         const btn = document.createElement('button');
         btn.className = 'quality-btn' + (i === qualities.length - 1 ? ' popular' : '') + (i === 0 ? ' active' : '');
         btn.dataset.quality = q;
         btn.dataset.format = 'video';
-        btn.innerHTML = `<span class="q-label">${q}p</span><span class="q-sub">${labels[q] || q + 'p'}</span>`;
+        const sizeStr = formatSize(sizes[q]);
+        btn.innerHTML = `<span class="q-label">${q}p</span><span class="q-sub">${labels[q] || q + 'p'}</span><span class="q-size">${sizeStr}</span>`;
         qualityBtns.appendChild(btn);
     });
+
+    // MP3 size
+    const mp3SizeEl = document.querySelector('.mp3-btn .q-size');
+    if (mp3SizeEl) mp3SizeEl.textContent = formatSize(sizes['mp3']);
 
     // Reset selected quality to first
     selectedQuality = qualities[0];
     selectedFormat = 'video';
     updateDownloadBtn();
     initQualityBtns();
+}
+
+function formatSize(bytes) {
+    if (!bytes || bytes <= 0) return '—';
+    const mb = bytes / (1024 * 1024);
+    return mb >= 1 ? mb.toFixed(1) + ' MB' : (bytes / 1024).toFixed(0) + ' KB';
 }
 
 let selectedQuality = '360';
