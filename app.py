@@ -36,6 +36,49 @@ def clean_error(msg):
     return msg or "Could not fetch video info. Please check the URL and try again."
 
 
+def estimate_sizes(formats):
+    def get_size(f):
+        return f.get('filesize') or f.get('filesize_approx') or 0
+
+    video_only = [f for f in formats
+                  if f.get('vcodec', 'none') != 'none'
+                  and f.get('acodec', 'none') == 'none']
+    audio_only = [f for f in formats
+                  if f.get('acodec', 'none') != 'none'
+                  and f.get('vcodec', 'none') == 'none']
+    combined   = [f for f in formats
+                  if f.get('vcodec', 'none') != 'none'
+                  and f.get('acodec', 'none') != 'none']
+
+    best_audio_size = 0
+    if audio_only:
+        best_a = max(audio_only, key=lambda f: f.get('abr') or f.get('tbr') or 0)
+        best_audio_size = get_size(best_a)
+
+    sizes = {}
+    for quality, height in [('360', 360), ('720', 720), ('1080', 1080)]:
+        total = 0
+        vf = [f for f in video_only if 0 < (f.get('height') or 0) <= height]
+        if vf:
+            best_v = max(vf, key=lambda f: ((f.get('height') or 0), f.get('tbr') or 0))
+            v_size = get_size(best_v)
+            if v_size > 0:
+                total = v_size + best_audio_size
+        if total == 0:
+            cf = [f for f in combined if 0 < (f.get('height') or 0) <= height]
+            if cf:
+                best_c = max(cf, key=lambda f: ((f.get('height') or 0), f.get('tbr') or 0))
+                total = get_size(best_c)
+        sizes[quality] = total if total > 0 else None
+
+    mp3_size = 0
+    if audio_only:
+        best_a = max(audio_only, key=lambda f: f.get('abr') or f.get('tbr') or 0)
+        mp3_size = get_size(best_a)
+    sizes['mp3'] = mp3_size if mp3_size > 0 else None
+    return sizes
+
+
 def get_ydl_opts(quality="best", fmt="video", output_path=None):
     opts = {
         "quiet": True,
@@ -124,6 +167,8 @@ def video_info():
         seconds = int(duration % 60)
         duration_str = f"{minutes}:{seconds:02d}" if duration else ""
 
+        file_sizes = estimate_sizes(formats)
+
         return jsonify({
             "title": info.get("title", "Unknown Title"),
             "thumbnail": info.get("thumbnail", ""),
@@ -133,6 +178,7 @@ def video_info():
             "qualities": sorted(list(available_qualities), key=int),
             "has_audio": has_audio,
             "platform": info.get("extractor_key", "Unknown"),
+            "file_sizes": file_sizes,
         })
     except yt_dlp.utils.DownloadError as e:
         return jsonify({"error": clean_error(str(e))}), 400
