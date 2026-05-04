@@ -65,13 +65,13 @@
                     <div class="platform-badge" id="platformBadge"></div>
                     <h2 class="video-title" id="videoTitle">Loading...</h2>
                     <div class="video-stats">
-                        <span id="uploaderSpan" class="stat-item">
+                        <span id="uploaderSpan" class="stat-item hidden">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                             </svg>
                             <span id="uploaderName"></span>
                         </span>
-                        <span id="viewsSpan" class="stat-item">
+                        <span id="viewsSpan" class="stat-item hidden">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                             </svg>
@@ -95,21 +95,7 @@
                 <div class="quality-group">
                     <p class="quality-label">Video</p>
                     <div class="quality-btns" id="qualityBtns">
-                        <button class="quality-btn active" data-quality="360" data-format="video">
-                            <span class="q-label">360p</span>
-                            <span class="q-sub">SD</span>
-                            <span class="q-size"><span class="q-size-spinner"></span></span>
-                        </button>
-                        <button class="quality-btn" data-quality="720" data-format="video">
-                            <span class="q-label">720p</span>
-                            <span class="q-sub">HD</span>
-                            <span class="q-size"><span class="q-size-spinner"></span></span>
-                        </button>
-                        <button class="quality-btn popular" data-quality="1080" data-format="video">
-                            <span class="q-label">1080p</span>
-                            <span class="q-sub">Full HD</span>
-                            <span class="q-size"><span class="q-size-spinner"></span></span>
-                        </button>
+                        <!-- populated by JS -->
                     </div>
                 </div>
 
@@ -133,10 +119,10 @@
                         <polyline points="7 10 12 15 17 10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
-                    <span id="downloadBtnText">Download 360p</span>
+                    <span id="downloadBtnText">Download</span>
                 </button>
 
-                <!-- Progress Bar -->
+                <!-- Progress / Status -->
                 <div class="progress-wrap hidden" id="progressWrap">
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill"></div>
@@ -145,6 +131,14 @@
                         <span id="progressText">Preparing download...</span>
                         <span id="progressPct">0%</span>
                     </div>
+                </div>
+
+                <!-- Download Error -->
+                <div class="download-error hidden" id="downloadError">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span id="downloadErrorMsg"></span>
                 </div>
             </div>
 
@@ -163,7 +157,7 @@
                     <li>The file will automatically save to your device's download folder.</li>
                 </ol>
                 <div class="tip-box">
-                    <strong>Tip:</strong> For the best quality, choose 1080p. For the smallest file size, choose 360p. Choose MP3 to extract audio only.
+                    <strong>Tip:</strong> Higher resolutions mean larger files. Choose MP3 to extract audio only. YouTube and TikTok links work most reliably.
                 </div>
             </div>
         </div>
@@ -175,29 +169,12 @@
 <script>
 const VIDEO_URL = {{ url | tojson }};
 
-async function fetchVideoInfo(url) {
-    document.getElementById('loadingState').classList.remove('hidden');
-    document.getElementById('errorState').classList.add('hidden');
-    document.getElementById('videoCard').classList.add('hidden');
+const QUALITY_LABELS = {
+    '144': 'Low', '240': 'Low', '360': 'SD', '480': 'SD+',
+    '720': 'HD', '1080': 'Full HD', '1440': '2K', '2160': '4K', '4320': '8K'
+};
 
-    try {
-        const resp = await fetch('/vid/info', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url })
-        });
-        const data = await resp.json();
-
-        if (!resp.ok || data.error) {
-            showError(data.error || 'Failed to fetch video info');
-            return;
-        }
-
-        displayVideoInfo(data);
-    } catch (e) {
-        showError('Network error. Please try again.');
-    }
-}
+// ── UI helpers ────────────────────────────────────────────────────────────────
 
 function showError(msg) {
     document.getElementById('loadingState').classList.add('hidden');
@@ -213,6 +190,56 @@ function formatViews(n) {
     return n + ' views';
 }
 
+function formatSize(bytes) {
+    if (!bytes || bytes <= 0) return '—';
+    const mb = bytes / (1024 * 1024);
+    if (mb >= 1000) return (mb / 1024).toFixed(1) + ' GB';
+    return mb >= 1 ? mb.toFixed(1) + ' MB' : (bytes / 1024).toFixed(0) + ' KB';
+}
+
+function setProgress(pct, phase) {
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressPct').textContent  = Math.round(pct) + '%';
+    document.getElementById('progressText').textContent = phase;
+}
+
+function showDownloadError(msg) {
+    document.getElementById('downloadErrorMsg').textContent = msg;
+    document.getElementById('downloadError').classList.remove('hidden');
+}
+
+function hideDownloadError() {
+    document.getElementById('downloadError').classList.add('hidden');
+}
+
+function resetDownloadBtn() {
+    const btn = document.getElementById('downloadBtn');
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    document.getElementById('progressWrap').classList.add('hidden');
+}
+
+// ── Fetch video info ──────────────────────────────────────────────────────────
+
+async function fetchVideoInfo(url) {
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('errorState').classList.add('hidden');
+    document.getElementById('videoCard').classList.add('hidden');
+
+    try {
+        const resp = await fetch('/vid/info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+        const data = await resp.json();
+        if (!resp.ok || data.error) { showError(data.error || 'Failed to fetch video info'); return; }
+        displayVideoInfo(data);
+    } catch (e) {
+        showError('Network error. Please try again.');
+    }
+}
+
 function displayVideoInfo(data) {
     document.getElementById('loadingState').classList.add('hidden');
     document.getElementById('videoCard').classList.remove('hidden');
@@ -223,7 +250,7 @@ function displayVideoInfo(data) {
         thumb.onerror = () => { thumb.src = ''; thumb.parentElement.classList.add('no-thumb'); };
     }
 
-    document.getElementById('videoTitle').textContent = data.title || 'Unknown Title';
+    document.getElementById('videoTitle').textContent    = data.title || 'Unknown Title';
     document.getElementById('durationBadge').textContent = data.duration || '';
 
     if (data.uploader) {
@@ -235,46 +262,42 @@ function displayVideoInfo(data) {
         document.getElementById('viewsSpan').classList.remove('hidden');
     }
     if (data.platform) {
-        document.getElementById('platformBadge').textContent = data.platform;
-        document.getElementById('platformBadge').classList.remove('hidden');
+        const pb = document.getElementById('platformBadge');
+        pb.textContent = data.platform;
+        pb.classList.remove('hidden');
     }
 
-    // Quality buttons
     const qualityBtns = document.getElementById('qualityBtns');
     qualityBtns.innerHTML = '';
     const qualities = data.qualities && data.qualities.length ? data.qualities : ['360', '720'];
-    const labels = { '360': 'SD', '720': 'HD', '1080': 'Full HD', '2160': '4K' };
     const sizes = data.file_sizes || {};
 
     qualities.forEach((q, i) => {
+        const isHighest = i === qualities.length - 1;
+        const isFirst   = i === 0;
         const btn = document.createElement('button');
-        btn.className = 'quality-btn' + (i === qualities.length - 1 ? ' popular' : '') + (i === 0 ? ' active' : '');
+        btn.className = 'quality-btn' + (isHighest ? ' popular' : '') + (isFirst ? ' active' : '');
         btn.dataset.quality = q;
-        btn.dataset.format = 'video';
+        btn.dataset.format  = 'video';
+        const label   = QUALITY_LABELS[q] || (q + 'p');
         const sizeStr = formatSize(sizes[q]);
-        btn.innerHTML = `<span class="q-label">${q}p</span><span class="q-sub">${labels[q] || q + 'p'}</span><span class="q-size">${sizeStr}</span>`;
+        btn.innerHTML = `<span class="q-label">${q}p</span><span class="q-sub">${label}</span><span class="q-size">${sizeStr}</span>`;
         qualityBtns.appendChild(btn);
     });
 
-    // MP3 size
     const mp3SizeEl = document.querySelector('.mp3-btn .q-size');
     if (mp3SizeEl) mp3SizeEl.textContent = formatSize(sizes['mp3']);
 
-    // Reset selected quality to first
     selectedQuality = qualities[0];
-    selectedFormat = 'video';
+    selectedFormat  = 'video';
     updateDownloadBtn();
     initQualityBtns();
 }
 
-function formatSize(bytes) {
-    if (!bytes || bytes <= 0) return '—';
-    const mb = bytes / (1024 * 1024);
-    return mb >= 1 ? mb.toFixed(1) + ' MB' : (bytes / 1024).toFixed(0) + ' KB';
-}
+// ── Quality selection ─────────────────────────────────────────────────────────
 
-let selectedQuality = '360';
-let selectedFormat = 'video';
+let selectedQuality = '720';
+let selectedFormat  = 'video';
 
 function initQualityBtns() {
     document.querySelectorAll('.quality-btn').forEach(btn => {
@@ -282,73 +305,101 @@ function initQualityBtns() {
             document.querySelectorAll('.quality-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             selectedQuality = btn.dataset.quality;
-            selectedFormat = btn.dataset.format;
+            selectedFormat  = btn.dataset.format;
             updateDownloadBtn();
+            hideDownloadError();
         });
     });
 }
 
 function updateDownloadBtn() {
-    const text = selectedFormat === 'mp3'
-        ? 'Download MP3'
-        : `Download ${selectedQuality}p`;
-    document.getElementById('downloadBtnText').textContent = text;
+    document.getElementById('downloadBtnText').textContent =
+        selectedFormat === 'mp3' ? 'Download MP3' : `Download ${selectedQuality}p`;
 }
+
+// ── SSE-based download ────────────────────────────────────────────────────────
 
 document.getElementById('downloadBtn').addEventListener('click', async () => {
     const btn = document.getElementById('downloadBtn');
-    const progressWrap = document.getElementById('progressWrap');
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    const progressPct = document.getElementById('progressPct');
-
     btn.classList.add('loading');
     btn.disabled = true;
-    progressWrap.classList.remove('hidden');
+    document.getElementById('progressWrap').classList.remove('hidden');
+    hideDownloadError();
+    setProgress(0, 'Starting...');
 
-    // Animate progress
-    let pct = 0;
-    progressText.textContent = 'Preparing download...';
-    progressPct.textContent = '0%';
-    progressFill.style.width = '0%';
-
-    const fakeProgress = setInterval(() => {
-        if (pct < 85) {
-            pct += Math.random() * 8;
-            progressFill.style.width = pct + '%';
-            progressPct.textContent = Math.round(pct) + '%';
-            if (pct > 30) progressText.textContent = 'Processing video...';
-            if (pct > 60) progressText.textContent = 'Preparing file...';
-        }
-    }, 400);
-
-    const downloadUrl = `/vid/download?url=${encodeURIComponent(VIDEO_URL)}&quality=${selectedQuality}&format=${selectedFormat}`;
-
+    // 1. Start the background job
+    let jobId;
     try {
-        // Use an anchor to trigger download
+        const startResp = await fetch('/vid/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: VIDEO_URL, quality: selectedQuality, format: selectedFormat })
+        });
+        const startData = await startResp.json();
+        if (!startResp.ok || startData.error) throw new Error(startData.error || 'Could not start download');
+        jobId = startData.job_id;
+    } catch (e) {
+        resetDownloadBtn();
+        showDownloadError(e.message || 'Failed to start download. Please try again.');
+        return;
+    }
+
+    // 2. Listen to SSE progress stream
+    await new Promise((resolve) => {
+        const es = new EventSource(`/vid/progress/${jobId}`);
+
+        es.onmessage = (event) => {
+            let data;
+            try { data = JSON.parse(event.data); } catch (_) { return; }
+
+            if (data.status === 'error') {
+                es.close();
+                resetDownloadBtn();
+                showDownloadError(data.error || 'Download failed. Please try again.');
+                resolve();
+                return;
+            }
+
+            if (data.status === 'done') {
+                es.close();
+                setProgress(100, 'Preparing file transfer...');
+                resolve();
+                return;
+            }
+
+            // Live progress update
+            setProgress(data.progress || 0, data.phase || 'Downloading...');
+        };
+
+        es.onerror = () => {
+            es.close();
+            // Only treat as fatal if we never got a done signal
+            // (resolve already called means we're fine)
+            resolve();
+        };
+    });
+
+    // Check if an error was already shown
+    if (!document.getElementById('downloadError').classList.contains('hidden')) return;
+
+    // 3. Trigger the actual file download
+    setProgress(100, 'Saving file...');
+    try {
+        // Use a hidden anchor pointing at the file endpoint.
+        // The Content-Disposition: attachment header makes the browser
+        // save the file instead of navigating away.
         const a = document.createElement('a');
-        a.href = downloadUrl;
+        a.href = `/vid/file/${jobId}`;
         a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
 
-        setTimeout(() => {
-            clearInterval(fakeProgress);
-            progressFill.style.width = '100%';
-            progressPct.textContent = '100%';
-            progressText.textContent = 'Download started!';
-            setTimeout(() => {
-                btn.classList.remove('loading');
-                btn.disabled = false;
-                progressWrap.classList.add('hidden');
-            }, 2000);
-        }, 2000);
+        setProgress(100, 'Download complete!');
+        setTimeout(resetDownloadBtn, 3000);
     } catch (e) {
-        clearInterval(fakeProgress);
-        progressText.textContent = 'Download failed. Try again.';
-        btn.classList.remove('loading');
-        btn.disabled = false;
+        resetDownloadBtn();
+        showDownloadError('File transfer failed. Please try again.');
     }
 });
 
