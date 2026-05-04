@@ -1,5 +1,6 @@
 import os
 import re
+import glob
 import json
 import time
 import uuid
@@ -12,6 +13,13 @@ import yt_dlp
 app = Flask(__name__)
 
 ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+# Locate ffmpeg — it lives in the Nix store, not on PATH
+_ffmpeg_bin = shutil.which('ffmpeg')
+if not _ffmpeg_bin:
+    _candidates = glob.glob('/nix/store/*ffmpeg*/bin/ffmpeg')
+    _ffmpeg_bin = _candidates[0] if _candidates else None
+FFMPEG_DIR = os.path.dirname(_ffmpeg_bin) if _ffmpeg_bin else None
 
 # In-memory job store: job_id -> job dict
 jobs = {}
@@ -28,6 +36,8 @@ def clean_error(msg):
     msg = re.sub(r"\[.*?\]\s*[\w\-]+:\s*", "", msg, count=1).strip()
 
     low = msg.lower()
+    if "ffmpeg" in low and ("not installed" in low or "not found" in low):
+        return "Server configuration error: media processor not found. Please try again later."
     if "login required" in low or "sign in" in low or "authentication" in low:
         return ("Login required. Instagram, Facebook, and Twitter/X block downloads "
                 "without an active session. Try a public YouTube or TikTok link instead.")
@@ -49,15 +59,17 @@ def clean_error(msg):
         return "No downloadable video found at this URL. Make sure you paste a direct video link."
     if "copyright" in low:
         return "This video cannot be downloaded due to copyright restrictions."
-    if "unable to extract" in low or "please report" in low:
+    if "unable to extract" in low:
+        return "Could not extract video from this page. The site may have changed or the URL may be invalid."
+    if "please report" in low:
         return "This site is not fully supported. Try a link from YouTube, TikTok, Facebook, or Vimeo."
-    if len(msg) > 220:
-        msg = msg[:220] + "..."
+    if len(msg) > 260:
+        msg = msg[:260] + "..."
     return msg or "Could not fetch video info. Please check the URL and try again."
 
 
 def base_ydl_opts():
-    return {
+    opts = {
         "quiet": True,
         "no_warnings": True,
         "no_color": True,
@@ -66,11 +78,22 @@ def base_ydl_opts():
         "extractor_retries": 3,
         "socket_timeout": 30,
     }
+    if FFMPEG_DIR:
+        opts["ffmpeg_location"] = FFMPEG_DIR
+    return opts
 
 
-def estimate_sizes(formats, heights):
+def estimate_sizes(formats, heights, duration=0):
+    """Return estimated byte sizes keyed by height string and 'mp3'.
+    Falls back to tbr-based estimation when filesize metadata is absent."""
+
     def get_size(f):
-        return f.get('filesize') or f.get('filesize_approx') or 0
+        s = f.get('filesize') or f.get('filesize_approx') or 0
+        if not s and duration:
+            tbr = f.get('tbr') or 0
+            if tbr:
+                s = int(tbr * 1000 / 8 * duration)
+        return s
 
     video_only = [f for f in formats
                   if f.get('vcodec', 'none') != 'none'
@@ -91,12 +114,14 @@ def estimate_sizes(formats, heights):
     for height in heights:
         h = int(height)
         total = 0
+        # Try split video+audio streams first
         vf = [f for f in video_only if 0 < (f.get('height') or 0) <= h]
         if vf:
             best_v = max(vf, key=lambda f: ((f.get('height') or 0), f.get('tbr') or 0))
             v_size = get_size(best_v)
             if v_size > 0:
-                total = v_size + best_audio_size
+                total = v_size + (best_audio_size or 0)
+        # Fall back to pre-muxed (combined) formats — common on TikTok/Facebook/etc.
         if total == 0:
             cf = [f for f in combined if 0 < (f.get('height') or 0) <= h]
             if cf:
@@ -104,10 +129,17 @@ def estimate_sizes(formats, heights):
                 total = get_size(best_c)
         sizes[str(height)] = total if total > 0 else None
 
+    # MP3 size
     mp3_size = 0
     if audio_only:
         best_a = max(audio_only, key=lambda f: f.get('abr') or f.get('tbr') or 0)
         mp3_size = get_size(best_a)
+    elif combined:
+        # Some platforms have no audio-only stream; estimate from best combined
+        best_c = max(combined, key=lambda f: f.get('abr') or f.get('tbr') or 0)
+        abr = best_c.get('abr') or 0
+        if abr and duration:
+            mp3_size = int(abr * 1000 / 8 * duration)
     sizes['mp3'] = mp3_size if mp3_size > 0 else None
     return sizes
 
@@ -214,7 +246,9 @@ def run_download(job_id, url, quality, fmt):
 
         file_path = os.path.join(tmp_dir, downloaded_files[0])
         ext = downloaded_files[0].rsplit('.', 1)[-1]
-        safe_title = ''.join(c for c in title if c.isalnum() or c in ' -_')[:60].strip()
+        safe_title = ''.join(
+            c for c in title if c.isascii() and (c.isalnum() or c in ' -_')
+        )[:60].strip()
         download_name = f"{safe_title or 'video'}.{ext}"
 
         with jobs_lock:
@@ -292,7 +326,7 @@ def video_info():
         seconds = int(duration % 60)
         duration_str = f"{minutes}:{seconds:02d}" if duration else ""
 
-        file_sizes = estimate_sizes(formats, qualities)
+        file_sizes = estimate_sizes(formats, qualities, duration=duration)
 
         return jsonify({
             "title": info.get("title", "Unknown Title"),
@@ -416,6 +450,10 @@ def download_file(job_id):
     file_size = os.path.getsize(file_path)
     mime = "audio/mpeg" if fmt == "mp3" else "video/mp4"
 
+    # Build a safe ASCII filename for the Content-Disposition header
+    # (HTTP headers are latin-1; non-ASCII chars crash Flask's dev server)
+    ascii_name = filename.encode('ascii', 'ignore').decode('ascii') or 'video.mp4'
+
     def stream_file():
         try:
             with open(file_path, 'rb') as f:
@@ -434,7 +472,7 @@ def download_file(job_id):
         stream_with_context(stream_file()),
         mimetype=mime,
         headers={
-            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Content-Disposition': f'attachment; filename="{ascii_name}"',
             'Content-Length':      str(file_size),
         }
     )
